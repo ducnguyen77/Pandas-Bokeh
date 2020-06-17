@@ -54,9 +54,7 @@ def df_fruits():
         "2017": [3, 2, 4, 4, 5, 3],
     }
 
-    df_fruits = pd.DataFrame(data).set_index("fruits")
-
-    return df_fruits
+    return pd.DataFrame(data).set_index("fruits")
 
 
 @pytest.fixture(scope="function")
@@ -64,7 +62,7 @@ def df_hist():
 
     np.random.seed(42)
 
-    df_hist = pd.DataFrame(
+    return pd.DataFrame(
         {
             "a": np.random.randn(1000) + 1,
             "b": np.random.randn(1000),
@@ -73,27 +71,22 @@ def df_hist():
         columns=["a", "b", "c"],
     )
 
-    return df_hist
-
 
 @pytest.fixture(scope="function")
 def df_energy():
 
-    df_energy = pd.read_csv(
-        os.path.join(TEST_SETS_DIRECTORY, "energy", "energy.csv"), parse_dates=["Year"]
+    return pd.read_csv(
+        os.path.join(TEST_SETS_DIRECTORY, "energy", "energy.csv"),
+        parse_dates=["Year"],
     )
-
-    return df_energy
 
 
 @pytest.fixture(scope="function")
 def df_election():
 
-    df_election = pd.read_csv(
+    return pd.read_csv(
         os.path.join(TEST_SETS_DIRECTORY, "Bundestagswahl", "Bundestagswahl.csv")
     )
-
-    return df_election
 
 
 @pytest.fixture(scope="function")

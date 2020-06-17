@@ -70,7 +70,7 @@ def _add_backgroundtile(
 
     from bokeh.models import WMTSTileSource
 
-    if not tile_provider_url is None:
+    if tile_provider_url is not None:
         if (
             "/{Z}/{X}/{Y}" not in tile_provider_url
             and "/{Z}/{Y}/{X}" not in tile_provider_url
@@ -85,17 +85,16 @@ def _add_backgroundtile(
         )
         t.alpha = tile_alpha
 
-    elif not tile_provider is None:
-        if not isinstance(tile_provider, str):
+    elif tile_provider is not None:
+        if (
+            not isinstance(tile_provider, str)
+            or _get_background_tile(tile_provider) == False
+        ):
             raise ValueError(
                 f"<tile_provider> only accepts the values: {TILE_PROVIDERS}"
             )
-        elif _get_background_tile(tile_provider) != False:
-            t = p.add_tile(_get_background_tile(tile_provider))
         else:
-            raise ValueError(
-                f"<tile_provider> only accepts the values: {TILE_PROVIDERS}"
-            )
+            t = p.add_tile(_get_background_tile(tile_provider))
         t.alpha = tile_alpha
 
     return p
@@ -294,14 +293,16 @@ def geoplot(
         )
 
     # Check for category (single choropleth plot):
-    if category is None:
+    if (
+        category is None
+        or not isinstance(category, (list, tuple))
+        and category in gdf.columns
+    ):
         pass
     elif isinstance(category, (list, tuple)):
         raise ValueError(
             "For <category>, please provide an existing single column of the GeoDataFrame."
         )
-    elif category in gdf.columns:
-        pass
     else:
         raise ValueError(
             f"Could not find column '{category}' in GeoDataFrame. For <category>, please provide an existing single column of the GeoDataFrame."
@@ -346,9 +347,10 @@ def geoplot(
                     raise ValueError(
                         "The number of elements in <slider_range> has to be the same as in <slider>."
                     )
-                steps = []
-                for i in range(len(slider_range) - 1):
-                    steps.append(slider_range[i + 1] - slider_range[i])
+                steps = [
+                    slider_range[i + 1] - slider_range[i]
+                    for i in range(len(slider_range) - 1)
+                ]
 
                 if len(set(steps)) > 1:
                     raise ValueError(
@@ -361,27 +363,28 @@ def geoplot(
 
     # Check colormap if either <category>, <dropdown> or <slider> is choosen:
     if category_options == 1:
-        if colormap is None:
-            colormap = blue_colormap
-        elif isinstance(colormap, (tuple, list)):
-            if len(colormap) > 1:
-                pass
-            else:
-                raise ValueError(
-                    f"<colormap> only accepts a list/tuple of at least two colors or the name of one of the following predefined colormaps (see also https://bokeh.pydata.org/en/latest/docs/reference/palettes.html ): {list(all_palettes.keys())}"
-                )
-        elif isinstance(colormap, str):
-            if colormap in all_palettes:
-                colormap = all_palettes[colormap]
-                colormap = colormap[max(colormap.keys())]
-            else:
-                raise ValueError(
-                    f"Could not find <colormap> with name {colormap}. The following predefined colormaps are supported (see also https://bokeh.pydata.org/en/latest/docs/reference/palettes.html ): {list(all_palettes.keys())}"
-                )
-        else:
+        if (
+            colormap is not None
+            and isinstance(colormap, (tuple, list))
+            and len(colormap) <= 1
+            or colormap is not None
+            and not isinstance(colormap, (tuple, list))
+            and not isinstance(colormap, str)
+        ):
             raise ValueError(
                 f"<colormap> only accepts a list/tuple of at least two colors or the name of one of the following predefined colormaps (see also https://bokeh.pydata.org/en/latest/docs/reference/palettes.html ): {list(all_palettes.keys())}"
             )
+        elif colormap is not None and isinstance(colormap, (tuple, list)):
+            pass
+        elif colormap is not None and colormap in all_palettes:
+            colormap = all_palettes[colormap]
+            colormap = colormap[max(colormap.keys())]
+        elif colormap is not None:
+            raise ValueError(
+                f"Could not find <colormap> with name {colormap}. The following predefined colormaps are supported (see also https://bokeh.pydata.org/en/latest/docs/reference/palettes.html ): {list(all_palettes.keys())}"
+            )
+        else:
+            colormap = blue_colormap
     else:
         if isinstance(color, str):
             colormap = [color]
@@ -394,56 +397,45 @@ def geoplot(
 
     # Check xlim & ylim:
     if xlim is not None:
-        if isinstance(xlim, (tuple, list)):
-            if len(xlim) == 2:
-                xmin, xmax = xlim
-                for _ in [xmin, xmax]:
-                    if not -180 < _ <= 180:
-                        raise ValueError(
-                            "Limits for x-axis (=Longitude) have to be between -180 and 180."
-                        )
-                if not xmin < xmax:
-                    raise ValueError("xmin has to be smaller than xmax.")
+        if isinstance(xlim, (tuple, list)) and len(xlim) == 2:
+            xmin, xmax = xlim
+            for _ in [xmin, xmax]:
+                if not -180 < _ <= 180:
+                    raise ValueError(
+                        "Limits for x-axis (=Longitude) have to be between -180 and 180."
+                    )
+            if not xmin < xmax:
+                raise ValueError("xmin has to be smaller than xmax.")
 
-                from pyproj import Transformer
-                transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
-                xmin = transformer.transform(0, xmin)[0]
-                xmax = transformer.transform(0, xmax)[0]
-                figure_options["x_range"] = (xmin, xmax)
-            else:
-                raise ValueError(
-                    "Limits for x-axis (=Longitude) have to be of form [xmin, xmax] with values between -180 and 180."
-                )
+            from pyproj import Transformer
+            transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
+            xmin = transformer.transform(0, xmin)[0]
+            xmax = transformer.transform(0, xmax)[0]
+            figure_options["x_range"] = (xmin, xmax)
         else:
             raise ValueError(
                 "Limits for x-axis (=Longitude) have to be of form [xmin, xmax] with values between -180 and 180."
             )
     if ylim is not None:
-        if isinstance(ylim, (tuple, list)):
-            if len(ylim) == 2:
-                ymin, ymax = ylim
-                for _ in [ymin, ymax]:
-                    if not -90 < _ <= 90:
-                        raise ValueError(
-                            "Limits for y-axis (=Latitude) have to be between -90 and 90."
-                        )
-                if not ymin < ymax:
-                    raise ValueError("ymin has to be smaller than ymax.")
+        if isinstance(ylim, (tuple, list)) and len(ylim) == 2:
+            ymin, ymax = ylim
+            for _ in [ymin, ymax]:
+                if not -90 < _ <= 90:
+                    raise ValueError(
+                        "Limits for y-axis (=Latitude) have to be between -90 and 90."
+                    )
+            if not ymin < ymax:
+                raise ValueError("ymin has to be smaller than ymax.")
 
-                from pyproj import Transformer
-                transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
-                ymin = transformer.transform(ymin,0)[1]
-                ymax = transformer.transform(ymax,0)[1]
-                figure_options["y_range"] = (ymin, ymax)
-            else:
-                raise ValueError(
-                    "Limits for y-axis (=Latitude) have to be of form [ymin, ymax] with values between -90 and 90."
-                )
+            from pyproj import Transformer
+            transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
+            ymin = transformer.transform(ymin,0)[1]
+            ymax = transformer.transform(ymax,0)[1]
+            figure_options["y_range"] = (ymin, ymax)
         else:
             raise ValueError(
                 "Limits for y-axis (=Latitude) have to be of form [ymin, ymax] with values between -90 and 90."
             )
-
     # Create Figure to draw:
     old_layout = None
     if figure is None:
@@ -471,9 +463,7 @@ def geoplot(
 
     # Hide legend if wanted:
     legend_input = legend
-    if isinstance(legend, str):
-        pass
-    else:
+    if not isinstance(legend, str):
         legend = "GeoLayer"
 
     # Define colormapper:
@@ -606,11 +596,7 @@ def geoplot(
                         f"Could not find columns '{col}' in GeoDataFrame. <hovertool_columns> has to be a list of columns of the GeoDataFrame or the string 'all'."
                     )
     else:
-        if category is None:
-            hovertool_columns = []
-        else:
-            hovertool_columns = [category]
-
+        hovertool_columns = [] if category is None else [category]
     # Reduce DataFrame to needed columns:
     if type(gdf) == pd.DataFrame:
         gdf["Geometry"] = 0
@@ -618,9 +604,8 @@ def geoplot(
     else:
         additional_columns = [geometry_column]
     for kwarg, value in kwargs.items():
-        if isinstance(value, Hashable):
-            if value in gdf.columns:
-                additional_columns.append(value)
+        if isinstance(value, Hashable) and value in gdf.columns:
+            additional_columns.append(value)
     if category_options == 0:
         gdf = gdf[list(set(hovertool_columns) | set(additional_columns))]
     else:
@@ -807,11 +792,7 @@ def geoplot(
 
     # Display plot and if wanted return plot:
     if layout is None:
-        if old_layout is None:
-            layout = p
-        else:
-            layout = old_layout
-
+        layout = p if old_layout is None else old_layout
     # Display plot if wanted
     if show_figure:
         show(layout)
