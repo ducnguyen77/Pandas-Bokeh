@@ -35,9 +35,7 @@ def df_parabula_cube() -> pd.DataFrame:
     x = np.arange(-3, 3, 0.1)
     y2 = x ** 2
     y3 = x ** 3
-    df = pd.DataFrame({"x": x, "Parabula": y2, "Cube": y3})
-
-    return df
+    return pd.DataFrame({"x": x, "Parabula": y2, "Cube": y3})
 
 
 def df_iris():
@@ -422,12 +420,13 @@ def make_plots() -> dict:
 
 def _return_plot_functions() -> Callable:
 
-    functions = []
-    for key, value in globals().items():
-        if callable(value) and value.__module__ == __name__ and key.startswith("plot_"):
-            functions.append(value)
-
-    return functions
+    return [
+        value
+        for key, value in globals().items()
+        if callable(value)
+        and value.__module__ == __name__
+        and key.startswith("plot_")
+    ]
 
 
 if __name__ == "__main__":

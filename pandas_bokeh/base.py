@@ -115,9 +115,7 @@ suppress_output
 
     if notebook_type == "auto":
         notebook_type = detect_notebook_server()
-    elif notebook_type in ("jupyter", "zeppelin"):
-        pass
-    else:
+    elif notebook_type not in ("jupyter", "zeppelin"):
         raise ValueError('<notebook_type> can only be "jupyter", "zeppelin" or "auto"')
 
     global OUTPUT_TYPE
@@ -196,9 +194,7 @@ def embedded_html(fig, resources="CDN"):
         html_embedded += js_css_resources
     elif resources == "raw":
         raise NotImplementedError("<resources> = raw has to be implemented by Thomas!")
-    elif resources == None:
-        pass
-    else:
+    elif resources is not None:
         raise ValueError("<resources> only accept 'CDN', 'raw' or None.")
 
     # Add plot script and div
